@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm";
 
 export const projects = sqliteTable("projects", {
   id: text("id").primaryKey(), // nanoid
@@ -44,3 +45,23 @@ export const images = sqliteTable("images", {
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
+
+// Relations
+
+export const projectsRelations = relations(projects, ({ many }) => ({
+  scenes: many(scenes),
+}));
+
+export const scenesRelations = relations(scenes, ({ one, many }) => ({
+  project: one(projects, { fields: [scenes.projectId], references: [projects.id] }),
+  shots: many(shots),
+}));
+
+export const shotsRelations = relations(shots, ({ one, many }) => ({
+  scene: one(scenes, { fields: [shots.sceneId], references: [scenes.id] }),
+  images: many(images),
+}));
+
+export const imagesRelations = relations(images, ({ one }) => ({
+  shot: one(shots, { fields: [images.shotId], references: [shots.id] }),
+}));
