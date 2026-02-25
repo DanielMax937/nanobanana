@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useSettingsStore } from "@/store/settings";
+import { ParseLoadingSkeleton } from "@/components/loading-skeleton";
 
 interface SceneEditorProps {
   sceneId: string;
@@ -83,6 +84,7 @@ export function SceneEditor({
         {loading && <Loader2 className="animate-spin" />}
         {loading ? "解析中..." : "解析为分镜 Prompt"}
       </Button>
+      {loading && <ParseLoadingSkeleton />}
     </div>
   );
 }

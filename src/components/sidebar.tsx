@@ -28,6 +28,8 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { SettingsDialog } from "@/components/settings-dialog";
 
 type Scene = {
   id: string;
@@ -49,11 +51,17 @@ export function AppSidebar() {
   const [expandedProjects, setExpandedProjects] = React.useState<Set<string>>(
     new Set()
   );
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
 
   const fetchProjects = React.useCallback(async () => {
-    const res = await fetch("/api/projects");
-    const data = await res.json();
-    setProjects(data);
+    try {
+      const res = await fetch("/api/projects");
+      if (!res.ok) throw new Error("Failed to fetch projects");
+      const data = await res.json();
+      setProjects(data);
+    } catch {
+      toast.error("加载项目列表失败");
+    }
   }, []);
 
   React.useEffect(() => {
@@ -83,12 +91,17 @@ export function AppSidebar() {
   const handleCreateProject = async () => {
     const name = prompt("项目名称");
     if (!name?.trim()) return;
-    await fetch("/api/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim() }),
-    });
-    await fetchProjects();
+    try {
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      if (!res.ok) throw new Error("Failed to create project");
+      await fetchProjects();
+    } catch {
+      toast.error("创建项目失败");
+    }
   };
 
   const handleDeleteProject = async (
@@ -97,10 +110,15 @@ export function AppSidebar() {
   ) => {
     e.stopPropagation();
     if (!confirm("确定删除该项目及其所有场景？")) return;
-    await fetch(`/api/projects/${projectId}`, { method: "DELETE" });
-    await fetchProjects();
-    if (pathname.startsWith(`/projects/${projectId}`)) {
-      router.push("/");
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete project");
+      await fetchProjects();
+      if (pathname.startsWith(`/projects/${projectId}`)) {
+        router.push("/");
+      }
+    } catch {
+      toast.error("删除项目失败");
     }
   };
 
@@ -111,15 +129,20 @@ export function AppSidebar() {
     e.stopPropagation();
     const name = prompt("场景名称");
     if (!name?.trim()) return;
-    const res = await fetch(`/api/projects/${projectId}/scenes`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim() }),
-    });
-    const scene = await res.json();
-    await fetchProjects();
-    setExpandedProjects((prev) => new Set(prev).add(projectId));
-    router.push(`/projects/${projectId}/scenes/${scene.id}`);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/scenes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      if (!res.ok) throw new Error("Failed to create scene");
+      const scene = await res.json();
+      await fetchProjects();
+      setExpandedProjects((prev) => new Set(prev).add(projectId));
+      router.push(`/projects/${projectId}/scenes/${scene.id}`);
+    } catch {
+      toast.error("创建场景失败");
+    }
   };
 
   const handleDeleteScene = async (
@@ -130,12 +153,17 @@ export function AppSidebar() {
     e.preventDefault();
     e.stopPropagation();
     if (!confirm("确定删除该场景？")) return;
-    await fetch(`/api/projects/${projectId}/scenes/${sceneId}`, {
-      method: "DELETE",
-    });
-    await fetchProjects();
-    if (pathname.includes(sceneId)) {
-      router.push("/");
+    try {
+      const res = await fetch(`/api/projects/${projectId}/scenes/${sceneId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete scene");
+      await fetchProjects();
+      if (pathname.includes(sceneId)) {
+        router.push("/");
+      }
+    } catch {
+      toast.error("删除场景失败");
     }
   };
 
@@ -144,7 +172,7 @@ export function AppSidebar() {
       <SidebarHeader>
         <div className="flex items-center justify-between px-2 py-1">
           <span className="text-lg font-bold tracking-tight">Nano</span>
-          <Button variant="ghost" size="icon" className="size-7">
+          <Button variant="ghost" size="icon" className="size-7" onClick={() => setSettingsOpen(true)}>
             <Settings className="size-4" />
           </Button>
         </div>
@@ -251,6 +279,7 @@ export function AppSidebar() {
           )}
         </SidebarMenu>
       </SidebarFooter>
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </Sidebar>
   );
 }

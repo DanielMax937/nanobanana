@@ -39,7 +39,7 @@ export function ImageHistory({ shotId, onVersionChange }: ImageHistoryProps) {
       const data: ImageVersion[] = await res.json();
       setVersions(data);
     } catch {
-      // silently fail on initial load
+      toast.error("加载版本历史失败");
     }
   }, [shotId]);
 
