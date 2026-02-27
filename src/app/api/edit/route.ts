@@ -15,37 +15,36 @@ export async function POST(request: Request) {
       referenceImageBase64,
       referenceImageMimeType,
       geminiApiKey,
+      geminiBaseUrl,
       geminiModel,
     } = await request.json();
 
-    let refBase64 = referenceImageBase64;
-    let refMimeType = referenceImageMimeType || "image/png";
-
-    // If no reference image provided, use the current active image
-    if (!refBase64) {
-      const activeImage = await db.query.images.findFirst({
-        where: and(eq(images.shotId, shotId), eq(images.isActive, true)),
-      });
-      if (!activeImage) {
-        return NextResponse.json(
-          { error: "No active image to edit" },
-          { status: 400 }
-        );
-      }
-      const filePath = path.join(process.cwd(), "public", activeImage.filePath);
-      const fileBuffer = fs.readFileSync(filePath);
-      refBase64 = fileBuffer.toString("base64");
-      refMimeType = activeImage.filePath.endsWith(".png")
-        ? "image/png"
-        : "image/jpeg";
+    // Always load the original active image
+    const activeImage = await db.query.images.findFirst({
+      where: and(eq(images.shotId, shotId), eq(images.isActive, true)),
+    });
+    if (!activeImage) {
+      return NextResponse.json(
+        { error: "No active image to edit" },
+        { status: 400 }
+      );
     }
+    const originalFilePath = path.join(process.cwd(), "public", activeImage.filePath);
+    const originalBuffer = fs.readFileSync(originalFilePath);
+    const originalBase64 = originalBuffer.toString("base64");
+    const originalMimeType = activeImage.filePath.endsWith(".png")
+      ? "image/png"
+      : "image/jpeg";
 
     const result = await editImage(
       editInstruction,
-      refBase64,
-      refMimeType,
+      originalBase64,
+      originalMimeType,
       geminiApiKey,
-      geminiModel
+      geminiModel,
+      geminiBaseUrl || undefined,
+      referenceImageBase64 || undefined,
+      referenceImageMimeType || undefined
     );
 
     // Save image file

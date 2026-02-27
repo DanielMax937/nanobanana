@@ -6,6 +6,7 @@ interface Settings {
   llmBaseUrl: string;
   llmModel: string;
   geminiApiKey: string;
+  geminiBaseUrl: string;
   geminiModel: string;
 }
 
@@ -20,6 +21,7 @@ export const useSettingsStore = create<SettingsStore>()(
       llmBaseUrl: "https://api.openai.com/v1",
       llmModel: "gpt-4o",
       geminiApiKey: "",
+      geminiBaseUrl: "",
       geminiModel: "gemini-3-pro-image-preview",
       updateSettings: (partial) => set(partial),
     }),

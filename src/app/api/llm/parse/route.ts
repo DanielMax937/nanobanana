@@ -40,6 +40,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(createdShots);
   } catch (error: unknown) {
+    console.error("[/api/llm/parse] Error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }

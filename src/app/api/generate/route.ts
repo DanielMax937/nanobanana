@@ -9,9 +9,9 @@ import path from "path";
 
 export async function POST(request: Request) {
   try {
-    const { prompt, shotId, geminiApiKey, geminiModel } = await request.json();
+    const { prompt, shotId, geminiApiKey, geminiBaseUrl, geminiModel } = await request.json();
 
-    const result = await generateImage(prompt, geminiApiKey, geminiModel);
+    const result = await generateImage(prompt, geminiApiKey, geminiModel, geminiBaseUrl || undefined);
 
     // Save image file
     const imagesDir = path.join(process.cwd(), "public", "images");
@@ -46,6 +46,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(imageRecord);
   } catch (error: unknown) {
+    console.error("[/api/generate] Error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }

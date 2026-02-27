@@ -39,7 +39,7 @@ export function ShotCard({ shot, activeImage, onImageGenerated }: ShotCardProps)
   const [editing, setEditing] = useState(false);
   const [refFile, setRefFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { geminiApiKey, geminiModel } = useSettingsStore();
+  const { geminiApiKey, geminiBaseUrl, geminiModel } = useSettingsStore();
 
   async function handleGenerate() {
     if (!geminiApiKey) {
@@ -56,6 +56,7 @@ export function ShotCard({ shot, activeImage, onImageGenerated }: ShotCardProps)
           prompt,
           shotId: shot.id,
           geminiApiKey,
+          geminiBaseUrl,
           geminiModel,
         }),
       });
@@ -122,6 +123,7 @@ export function ShotCard({ shot, activeImage, onImageGenerated }: ShotCardProps)
           referenceImageBase64,
           referenceImageMimeType,
           geminiApiKey,
+          geminiBaseUrl,
           geminiModel,
         }),
       });

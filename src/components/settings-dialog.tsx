@@ -26,6 +26,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [llmBaseUrl, setLlmBaseUrl] = useState(settings.llmBaseUrl);
   const [llmModel, setLlmModel] = useState(settings.llmModel);
   const [geminiApiKey, setGeminiApiKey] = useState(settings.geminiApiKey);
+  const [geminiBaseUrl, setGeminiBaseUrl] = useState(settings.geminiBaseUrl);
   const [geminiModel, setGeminiModel] = useState(settings.geminiModel);
 
   useEffect(() => {
@@ -34,9 +35,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setLlmBaseUrl(settings.llmBaseUrl);
       setLlmModel(settings.llmModel);
       setGeminiApiKey(settings.geminiApiKey);
+      setGeminiBaseUrl(settings.geminiBaseUrl);
       setGeminiModel(settings.geminiModel);
     }
-  }, [open, settings.llmApiKey, settings.llmBaseUrl, settings.llmModel, settings.geminiApiKey, settings.geminiModel]);
+  }, [open, settings.llmApiKey, settings.llmBaseUrl, settings.llmModel, settings.geminiApiKey, settings.geminiBaseUrl, settings.geminiModel]);
 
   function handleSave() {
     settings.updateSettings({
@@ -44,6 +46,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       llmBaseUrl,
       llmModel,
       geminiApiKey,
+      geminiBaseUrl,
       geminiModel,
     });
     onOpenChange(false);
@@ -105,6 +108,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 placeholder="AIza..."
                 value={geminiApiKey}
                 onChange={(e) => setGeminiApiKey(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="gemini-base-url">Base URL (留空使用 Google 官方)</Label>
+              <Input
+                id="gemini-base-url"
+                placeholder="https://generativelanguage.googleapis.com"
+                value={geminiBaseUrl}
+                onChange={(e) => setGeminiBaseUrl(e.target.value)}
               />
             </div>
             <div className="space-y-2">
