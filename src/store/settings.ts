@@ -8,6 +8,7 @@ interface Settings {
   geminiApiKey: string;
   geminiBaseUrl: string;
   geminiModel: string;
+  autoModeMaxLoops: number;
 }
 
 interface SettingsStore extends Settings {
@@ -23,6 +24,7 @@ export const useSettingsStore = create<SettingsStore>()(
       geminiApiKey: "",
       geminiBaseUrl: "",
       geminiModel: "gemini-3-pro-image-preview",
+      autoModeMaxLoops: 5,
       updateSettings: (partial) => set(partial),
     }),
     { name: "nano-settings" }

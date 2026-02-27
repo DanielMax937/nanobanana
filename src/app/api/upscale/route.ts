@@ -1,35 +1,38 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { images } from "@/db/schema";
-import { eq, and, sql } from "drizzle-orm";
-import { nanoid } from "nanoid";
-import { editImage, annotationEditImage } from "@/lib/genai";
+import { eq, and } from "drizzle-orm";
+import { annotationEditImage } from "@/lib/genai";
 
 export async function POST(request: Request) {
   try {
     const {
       shotId,
-      editInstruction,
-      referenceImageBase64,
-      referenceImageMimeType,
-      annotatedImageBase64,
       geminiApiKey,
       geminiBaseUrl,
       geminiModel,
     } = await request.json();
 
-    // Always load the original active image
+    // Load the active image
     const activeImage = await db.query.images.findFirst({
       where: and(eq(images.shotId, shotId), eq(images.isActive, true)),
     });
     if (!activeImage) {
       return NextResponse.json(
-        { error: "No active image to edit" },
+        { error: "No active image to upscale" },
         { status: 400 }
       );
     }
 
-    // Extract base64 from data URL if needed
+    // Check if already 4K
+    if (activeImage.resolution === "4K") {
+      return NextResponse.json(
+        { error: "Image is already 4K" },
+        { status: 400 }
+      );
+    }
+
+    // Extract base64 from data URL
     let originalBase64: string;
     let originalMimeType: string;
     if (activeImage.filePath.startsWith("data:")) {
@@ -49,38 +52,18 @@ export async function POST(request: Request) {
         : "image/jpeg";
     }
 
-    let result;
-    if (annotatedImageBase64) {
-      // 标注修改: send the annotated image directly
-      result = await annotationEditImage(
-        annotatedImageBase64,
-        "image/png",
-        geminiApiKey,
-        geminiModel,
-        geminiBaseUrl || undefined
-      );
-    } else {
-      result = await editImage(
-        editInstruction,
-        originalBase64,
-        originalMimeType,
-        geminiApiKey,
-        geminiModel,
-        geminiBaseUrl || undefined,
-        referenceImageBase64 || undefined,
-        referenceImageMimeType || undefined
-      );
-    }
+    // Upscale using annotationEditImage with upscale prompt
+    const result = await annotationEditImage(
+      originalBase64,
+      originalMimeType,
+      geminiApiKey,
+      geminiModel,
+      geminiBaseUrl || undefined,
+      "4K"
+    );
 
-    // Store as data URL for preview (no filesystem save)
+    // Store as data URL
     const dataUrl = `data:${result.mimeType};base64,${result.imageBase64}`;
-
-    // Get next version number
-    const maxVersion = await db
-      .select({ max: sql<number>`MAX(version)` })
-      .from(images)
-      .where(eq(images.shotId, shotId));
-    const version = (maxVersion[0]?.max ?? 0) + 1;
 
     // Deactivate previous images
     await db
@@ -88,14 +71,24 @@ export async function POST(request: Request) {
       .set({ isActive: false })
       .where(eq(images.shotId, shotId));
 
-    // Insert new image record with data URL
+    // Get next version number
+    const { nanoid } = await import("nanoid");
+    const { sql } = await import("drizzle-orm");
+    const maxVersion = await db
+      .select({ max: sql<number>`MAX(version)` })
+      .from(images)
+      .where(eq(images.shotId, shotId));
+    const version = (maxVersion[0]?.max ?? 0) + 1;
+
+    // Insert new 4K image record
     const imageRecord = {
       id: nanoid(),
       shotId,
       filePath: dataUrl,
-      prompt: editInstruction,
-      editInstruction,
-      referenceImagePath: referenceImageBase64 ? "uploaded" : null,
+      prompt: activeImage.prompt,
+      editInstruction: "高清化至 4K",
+      referenceImagePath: null,
+      resolution: "4K",
       version,
       isActive: true,
       createdAt: new Date(),

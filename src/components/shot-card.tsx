@@ -12,9 +12,18 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useSettingsStore } from "@/store/settings";
 import { toast } from "sonner";
-import { Loader2, ChevronDown, ChevronUp, Upload } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, Upload, Pen, CheckCircle2, AlertCircle } from "lucide-react";
+import { ImageAnnotator } from "@/components/image-annotator";
+import { ImagePreview } from "@/components/image-preview";
 
 interface ShotCardProps {
   shot: {
@@ -27,6 +36,8 @@ interface ShotCardProps {
     id: string;
     filePath: string;
     version: number;
+    resolution?: string | null;
+    analysisResult?: string | null;
   } | null;
   onImageGenerated?: () => void;
 }
@@ -38,6 +49,10 @@ export function ShotCard({ shot, activeImage, onImageGenerated }: ShotCardProps)
   const [editInstruction, setEditInstruction] = useState("");
   const [editing, setEditing] = useState(false);
   const [refFile, setRefFile] = useState<File | null>(null);
+  const [annotatorOpen, setAnnotatorOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [resolution, setResolution] = useState<string>("1K");
+  const [upscaling, setUpscaling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { geminiApiKey, geminiBaseUrl, geminiModel } = useSettingsStore();
 
@@ -58,6 +73,7 @@ export function ShotCard({ shot, activeImage, onImageGenerated }: ShotCardProps)
           geminiApiKey,
           geminiBaseUrl,
           geminiModel,
+          resolution,
         }),
       });
 
@@ -146,8 +162,79 @@ export function ShotCard({ shot, activeImage, onImageGenerated }: ShotCardProps)
     }
   }
 
+  async function handleAnnotationEdit(annotatedBase64: string) {
+    if (!geminiApiKey) {
+      toast.warning("请先在设置中配置 Gemini API Key");
+      return;
+    }
+
+    setAnnotatorOpen(false);
+    setEditing(true);
+    try {
+      const res = await fetch("/api/edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shotId: shot.id,
+          editInstruction: "标注修改",
+          annotatedImageBase64: annotatedBase64,
+          geminiApiKey,
+          geminiBaseUrl,
+          geminiModel,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "标注编辑失败");
+      }
+
+      toast.success("标注编辑成功");
+      onImageGenerated?.();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "标注编辑失败";
+      toast.error(message);
+    } finally {
+      setEditing(false);
+    }
+  }
+
+  async function handleUpscale() {
+    if (!geminiApiKey) {
+      toast.warning("请先在设置中配置 Gemini API Key");
+      return;
+    }
+
+    setUpscaling(true);
+    try {
+      const res = await fetch("/api/upscale", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shotId: shot.id,
+          geminiApiKey,
+          geminiBaseUrl,
+          geminiModel,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "高清化失败");
+      }
+
+      toast.success("图片已高清化至 4K");
+      onImageGenerated?.();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "高清化失败";
+      toast.error(message);
+    } finally {
+      setUpscaling(false);
+    }
+  }
+
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader>
         <CardTitle>{shot.shotName}</CardTitle>
         <CardDescription>{shot.description}</CardDescription>
@@ -157,34 +244,108 @@ export function ShotCard({ shot, activeImage, onImageGenerated }: ShotCardProps)
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           rows={4}
-          className="font-mono text-sm"
+          className="font-mono text-sm w-full resize-none"
           placeholder="Nano prompt..."
         />
-        <Button onClick={handleGenerate} disabled={loading || editing}>
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          生成图片
-        </Button>
+        <div className="flex gap-2">
+          <Select value={resolution} onValueChange={setResolution}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="分辨率" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="512px">512px</SelectItem>
+              <SelectItem value="1K">1K</SelectItem>
+              <SelectItem value="2K">2K</SelectItem>
+              <SelectItem value="4K">4K</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={handleGenerate} disabled={loading || editing} className="flex-1">
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            生成图片
+          </Button>
+        </div>
 
         {loading && !activeImage && (
           <Skeleton className="aspect-video w-full rounded-lg" />
         )}
 
         {activeImage && (
-          <div className="relative">
-            {(loading || editing) && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/60">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
+          <div className="space-y-2">
+            <div className="relative w-48 mx-auto">
+              {(loading || editing || upscaling) && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/60">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={activeImage.filePath}
+                alt={shot.shotName}
+                className="w-full rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => setPreviewOpen(true)}
+              />
+              <span className="absolute bottom-2 right-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">
+                v{activeImage.version}
+              </span>
+            </div>
+
+            {/* Upscale button - only show if not already 4K */}
+            {activeImage.resolution !== "4K" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={handleUpscale}
+                disabled={upscaling || loading || editing}
+              >
+                {upscaling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                高清化至 4K
+              </Button>
             )}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={activeImage.filePath}
-              alt={shot.shotName}
-              className="w-full rounded-lg"
-            />
-            <span className="absolute bottom-2 right-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">
-              v{activeImage.version}
-            </span>
+
+            {/* Analysis Result */}
+            {activeImage.analysisResult && (() => {
+              try {
+                const analysis = JSON.parse(activeImage.analysisResult);
+                return (
+                  <div className="text-xs border rounded-lg p-3 bg-muted/30 space-y-2">
+                    <div className="flex items-center gap-1.5 font-medium">
+                      {analysis.hasIssues ? (
+                        <AlertCircle className="size-3.5 text-yellow-500" />
+                      ) : (
+                        <CheckCircle2 className="size-3.5 text-green-500" />
+                      )}
+                      <span>LLM 分析结果</span>
+                    </div>
+                    {analysis.summary && (
+                      <p className="text-muted-foreground">{analysis.summary}</p>
+                    )}
+                    {analysis.issues && analysis.issues.length > 0 && (
+                      <div className="space-y-0.5">
+                        <span className="text-yellow-600 dark:text-yellow-400">问题:</span>
+                        <ul className="list-disc list-inside text-muted-foreground">
+                          {analysis.issues.map((issue: string, i: number) => (
+                            <li key={i}>{issue}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {analysis.suggestions && analysis.suggestions.length > 0 && (
+                      <div className="space-y-0.5">
+                        <span className="text-blue-600 dark:text-blue-400">建议:</span>
+                        <ul className="list-disc list-inside text-muted-foreground">
+                          {analysis.suggestions.slice(0, 3).map((s: string, i: number) => (
+                            <li key={i}>{s}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                );
+              } catch {
+                return null;
+              }
+            })()}
           </div>
         )}
 
@@ -248,11 +409,38 @@ export function ShotCard({ shot, activeImage, onImageGenerated }: ShotCardProps)
                     垫图修改
                   </Button>
                 </div>
+
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setAnnotatorOpen(true)}
+                  disabled={editing || loading}
+                >
+                  <Pen className="mr-2 h-4 w-4" />
+                  标注修改
+                </Button>
               </div>
             )}
           </div>
         )}
       </CardContent>
+
+      {activeImage && (
+        <ImageAnnotator
+          imageSrc={activeImage.filePath}
+          open={annotatorOpen}
+          onConfirm={handleAnnotationEdit}
+          onCancel={() => setAnnotatorOpen(false)}
+        />
+      )}
+
+      {activeImage && (
+        <ImagePreview
+          src={activeImage.filePath}
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+        />
+      )}
     </Card>
   );
 }

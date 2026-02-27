@@ -4,6 +4,7 @@ import { relations } from "drizzle-orm";
 export const projects = sqliteTable("projects", {
   id: text("id").primaryKey(), // nanoid
   name: text("name").notNull(),
+  alias: text("alias"), // display name
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
@@ -14,6 +15,7 @@ export const scenes = sqliteTable("scenes", {
     .notNull()
     .references(() => projects.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  alias: text("alias"), // display name
   description: text("description"), // 用户输入的镜头描述原文
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
@@ -26,8 +28,10 @@ export const shots = sqliteTable("shots", {
     .notNull()
     .references(() => scenes.id, { onDelete: "cascade" }),
   shotName: text("shot_name").notNull(),
+  alias: text("alias"), // display name
   description: text("description").notNull(),
   nanoPrompt: text("nano_prompt").notNull(),
+  promptVersion: integer("prompt_version").notNull().default(1), // batch version for each parse
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
@@ -41,8 +45,10 @@ export const images = sqliteTable("images", {
   prompt: text("prompt").notNull(),
   editInstruction: text("edit_instruction"),
   referenceImagePath: text("reference_image_path"),
+  resolution: text("resolution").default("1K"), // 512px, 1K, 2K, 4K
   version: integer("version").notNull().default(1),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  analysisResult: text("analysis_result"), // JSON string of LLM analysis result
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 

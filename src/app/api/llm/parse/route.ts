@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { shots, scenes } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { parseShotDescription } from "@/lib/llm";
 
@@ -23,13 +23,21 @@ export async function POST(request: Request) {
       .set({ description, updatedAt: new Date() })
       .where(eq(scenes.id, sceneId));
 
-    // Insert shots
+    // Get next prompt version for this scene
+    const maxVersion = await db
+      .select({ max: sql<number>`MAX(prompt_version)` })
+      .from(shots)
+      .where(eq(shots.sceneId, sceneId));
+    const promptVersion = (maxVersion[0]?.max ?? 0) + 1;
+
+    // Insert shots with version
     const createdShots = parsed.map((shot, index) => ({
       id: nanoid(),
       sceneId,
       shotName: shot.shotName,
       description: shot.description,
       nanoPrompt: shot.nanoPrompt,
+      promptVersion,
       sortOrder: index,
       createdAt: new Date(),
     }));

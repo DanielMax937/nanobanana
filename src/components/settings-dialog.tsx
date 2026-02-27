@@ -28,6 +28,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [geminiApiKey, setGeminiApiKey] = useState(settings.geminiApiKey);
   const [geminiBaseUrl, setGeminiBaseUrl] = useState(settings.geminiBaseUrl);
   const [geminiModel, setGeminiModel] = useState(settings.geminiModel);
+  const [autoModeMaxLoops, setAutoModeMaxLoops] = useState(settings.autoModeMaxLoops);
 
   useEffect(() => {
     if (open) {
@@ -37,8 +38,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setGeminiApiKey(settings.geminiApiKey);
       setGeminiBaseUrl(settings.geminiBaseUrl);
       setGeminiModel(settings.geminiModel);
+      setAutoModeMaxLoops(settings.autoModeMaxLoops);
     }
-  }, [open, settings.llmApiKey, settings.llmBaseUrl, settings.llmModel, settings.geminiApiKey, settings.geminiBaseUrl, settings.geminiModel]);
+  }, [open, settings.llmApiKey, settings.llmBaseUrl, settings.llmModel, settings.geminiApiKey, settings.geminiBaseUrl, settings.geminiModel, settings.autoModeMaxLoops]);
 
   function handleSave() {
     settings.updateSettings({
@@ -48,6 +50,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       geminiApiKey,
       geminiBaseUrl,
       geminiModel,
+      autoModeMaxLoops,
     });
     onOpenChange(false);
   }
@@ -96,6 +99,18 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 value={llmModel}
                 onChange={(e) => setLlmModel(e.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="auto-mode-max-loops">Auto Mode Max Loops</Label>
+              <Input
+                id="auto-mode-max-loops"
+                type="number"
+                min={1}
+                max={10}
+                value={autoModeMaxLoops}
+                onChange={(e) => setAutoModeMaxLoops(parseInt(e.target.value, 10) || 5)}
+              />
+              <p className="text-xs text-muted-foreground">Maximum iterations for auto mode analysis loop</p>
             </div>
           </TabsContent>
 

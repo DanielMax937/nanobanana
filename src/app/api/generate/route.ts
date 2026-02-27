@@ -4,23 +4,15 @@ import { images } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { generateImage } from "@/lib/genai";
-import fs from "fs";
-import path from "path";
 
 export async function POST(request: Request) {
   try {
-    const { prompt, shotId, geminiApiKey, geminiBaseUrl, geminiModel } = await request.json();
+    const { prompt, shotId, geminiApiKey, geminiBaseUrl, geminiModel, resolution } = await request.json();
 
-    const result = await generateImage(prompt, geminiApiKey, geminiModel, geminiBaseUrl || undefined);
+    const result = await generateImage(prompt, geminiApiKey, geminiModel, geminiBaseUrl || undefined, resolution);
 
-    // Save image file
-    const imagesDir = path.join(process.cwd(), "public", "images");
-    if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
-
-    const ext = result.mimeType.includes("png") ? "png" : "jpg";
-    const fileName = `${nanoid()}.${ext}`;
-    const filePath = path.join(imagesDir, fileName);
-    fs.writeFileSync(filePath, Buffer.from(result.imageBase64, "base64"));
+    // Store as data URL for preview (no filesystem save)
+    const dataUrl = `data:${result.mimeType};base64,${result.imageBase64}`;
 
     // Get next version number
     const maxVersion = await db
@@ -32,12 +24,13 @@ export async function POST(request: Request) {
     // Deactivate previous images
     await db.update(images).set({ isActive: false }).where(eq(images.shotId, shotId));
 
-    // Insert new image record
+    // Insert new image record with data URL
     const imageRecord = {
       id: nanoid(),
       shotId,
-      filePath: `/images/${fileName}`,
+      filePath: dataUrl,
       prompt,
+      resolution: resolution || "1K",
       version,
       isActive: true,
       createdAt: new Date(),
