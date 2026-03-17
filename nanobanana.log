@@ -1,0 +1,20 @@
+
+> nano@0.1.0 dev /Users/caoxiaopeng/Desktop/git/nanobanana
+> next dev -p 8500
+
+sh: next: command not found
+ ELIFECYCLE  Command failed.
+ WARN   Local package.json exists, but node_modules missing, did you mean to install?
+
+> nano@0.1.0 dev /Users/caoxiaopeng/Desktop/git/nanobanana
+> next dev -p 8500
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:8500
+- Network:       http://192.168.1.127:8500
+
+✓ Starting...
+✓ Ready in 1649ms
+ GET /api/health 200 in 166ms (compile: 157ms, render: 9ms)
+ GET /api/health 200 in 26ms (compile: 21ms, render: 5ms)
+ GET /api/health 200 in 26ms (compile: 20ms, render: 6ms)
